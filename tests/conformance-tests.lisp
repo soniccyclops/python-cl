@@ -109,7 +109,7 @@
       (test-arithmetic "Zero multiplication" "5 * 0" 0)
       
       ;; Division
-      (test-arithmetic "True division" "15 / 3" 5)
+      (test-arithmetic "True division" "15 / 3" 5.0)
       (test-arithmetic "Float division" "7 / 2" 3.5)
       (test-arithmetic "Division with float result" "5 / 2" 2.5)
       

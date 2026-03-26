@@ -197,7 +197,8 @@
            (right-val (py-value right)))
        (when (zerop right-val)
          (error "ZeroDivisionError: division by zero"))
-       (lisp-to-python (/ left-val right-val))))
+       ;; Python 3 division always returns float
+       (make-py-float (float (/ left-val right-val)))))
     
     (t (error "TypeError: unsupported operand type(s) for /: '~A' and '~A'"
               (py-type left) (py-type right)))))
@@ -211,7 +212,10 @@
            (right-val (py-value right)))
        (when (zerop right-val)
          (error "ZeroDivisionError: integer division or modulo by zero"))
-       (lisp-to-python (floor left-val right-val))))
+       ;; Return float if either operand is float, otherwise int
+       (if (or (py-float-p left) (py-float-p right))
+           (make-py-float (float (floor left-val right-val)))
+           (lisp-to-python (floor left-val right-val)))))
     
     (t (error "TypeError: unsupported operand type(s) for //: '~A' and '~A'"
               (py-type left) (py-type right)))))
@@ -237,7 +241,17 @@
           (or (py-int-p right) (py-float-p right) (py-complex-p right)))
      (let ((left-val (py-value left))
            (right-val (py-value right)))
-       (lisp-to-python (expt left-val right-val))))
+       (let ((result (expt left-val right-val)))
+         (cond
+           ;; Integer result from int ** int with non-negative exponent (check first!)
+           ((and (py-int-p left) (py-int-p right) 
+                 (>= right-val 0) (integerp result))
+            (make-py-int result))
+           ;; Rational (non-integer) result - convert to float
+           ((and (rationalp result) (not (integerp result)))
+            (make-py-float (float result)))
+           ;; Otherwise convert via lisp-to-python
+           (t (lisp-to-python result))))))
     
     (t (error "TypeError: unsupported operand type(s) for **: '~A' and '~A'"
               (py-type left) (py-type right)))))
