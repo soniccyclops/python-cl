@@ -9,17 +9,6 @@
   position
   current-token)
 
-(defun operator-precedence (op-string)
-  "Return precedence for Python operators (higher = tighter binding)"
-  (case (intern (string-upcase op-string) :keyword)
-    (:** 14)     ; Exponentiation (right associative)
-    ((:* :/ :/\/ :%) 12) ; Multiplication, division, modulo
-    ((:+ :-) 11) ; Addition, subtraction (binary context)
-    ((:< :<= :> :>= :!= :==) 8) ; Comparisons
-    (:AND 5)     ; Boolean AND
-    (:OR 4)      ; Boolean OR
-    (t 0)))      ; Unknown operators
-
 (defun advance-token (state)
   "Advance to next token in parse state"
   (when (< (1+ (parse-state-position state)) (length (parse-state-tokens state)))
@@ -92,56 +81,44 @@
       ;; Numbers
       ((eq (token-type token) :number)
        (advance-token state)
-       (let ((num-expr (make-py-num (token-value-as-number token))))
-         (parse-postfix state num-expr)))
+       (make-py-num (token-value-as-number token)))
       
       ;; Strings
       ((eq (token-type token) :string)
        (advance-token state)
-       (let ((str-expr (make-py-str (token-value token))))
-         (parse-postfix state str-expr)))
+       (make-py-str (token-value token)))
       
       ;; Boolean literals
       ((and (eq (token-type token) :keyword)
             (member (token-value token) '("True" "False") :test #'string=))
        (advance-token state)
-       (let ((bool-expr (make-py-bool (string= (token-value token) "True"))))
-         (parse-postfix state bool-expr)))
+       (make-py-bool (string= (token-value token) "True")))
       
       ;; Identifiers
       ((eq (token-type token) :identifier)
        (advance-token state)
-       (let ((name-expr (make-py-name (token-value token))))
-         (parse-postfix state name-expr)))
+       (make-py-name (token-value token)))
       
       ;; Parenthesized expressions
       ((token-matches-p state :delimiter "(")
        (consume-token state :delimiter "(")
        (let ((expr (parse-expression state)))
          (consume-token state :delimiter ")")
-         (parse-postfix state expr)))
+         expr))
       
-      (t (error "Unexpected token in expression: ~A" token))))
+      (t (error "Unexpected token in expression: ~A" token)))))
 
-(defun parse-postfix (state expr)
-  "Parse postfix operations like function calls"
-  (loop while (token-matches-p state :delimiter "(")
-        do (consume-token state :delimiter "(")
-           (let ((args (parse-call-arguments state)))
-             (consume-token state :delimiter ")")
-             (setf expr (make-py-call expr args))))
-  expr)
-
-(defun parse-call-arguments (state)
-  "Parse function call argument list"
-  (let (args)
-    (unless (token-matches-p state :delimiter ")")
-      (loop
-        (push (parse-expression state) args)
-        (unless (token-matches-p state :delimiter ",")
-          (return))
-        (consume-token state :delimiter ",")))
-    (reverse args)))
+(defun operator-precedence (op-string)
+  "Return precedence for Python operators (higher = tighter binding)"
+  (case (intern (string-upcase op-string) :keyword)
+    (:** 14)     ; Exponentiation (right associative)
+    ((:+ :-) 13) ; Unary plus/minus
+    ((:* :/ :/\/ :%) 12) ; Multiplication, division, modulo
+    ((:+ :-) 11) ; Addition, subtraction
+    ((:< :<= :> :>= :!= :==) 8) ; Comparisons
+    (:AND 5)     ; Boolean AND
+    (:OR 4)      ; Boolean OR
+    (t 0)))      ; Unknown operators
 
 ;;; Statement Parsing
 
@@ -149,11 +126,6 @@
   "Parse a Python statement"
   (let ((first-token (peek-token state)))
     (cond
-      ;; Function definition
-      ((and (eq (token-type first-token) :keyword)
-            (string= (token-value first-token) "def"))
-       (parse-function-def state))
-      
       ;; If statement
       ((and (eq (token-type first-token) :keyword)
             (string= (token-value first-token) "if"))
@@ -163,11 +135,6 @@
       ((and (eq (token-type first-token) :keyword)
             (string= (token-value first-token) "while"))
        (parse-while-statement state))
-      
-      ;; Return statement
-      ((and (eq (token-type first-token) :keyword)
-            (string= (token-value first-token) "return"))
-       (parse-return-statement state))
       
       ;; Break statement
       ((and (eq (token-type first-token) :keyword)
@@ -180,7 +147,7 @@
             (string= (token-value first-token) "continue"))
        (consume-token state :keyword "continue")
        (make-py-continue))
-      
+       
       ;; Check for assignment: identifier = expression
       ((and (eq (token-type first-token) :identifier)
             (< (1+ (parse-state-position state)) (length (parse-state-tokens state)))
@@ -200,31 +167,34 @@
   (consume-token state :keyword "if")
   (let ((test (parse-expression state)))
     (consume-token state :delimiter ":")
-    (let ((body (list (parse-statement state)))
-          (orelse nil))
+    (let ((body (list (parse-statement state))))
       
-      ;; Parse elif/else chain
-      (loop while (and (not (eq (token-type (peek-token state)) :eof))
-                       (not (eq (token-type (peek-token state)) :newline))
-                       (eq (token-type (peek-token state)) :keyword)
-                       (member (token-value (peek-token state)) '("elif" "else") :test #'string=))
-            do (cond
-                 ;; elif: create nested if statement
-                 ((string= (token-value (peek-token state)) "elif")
-                  (consume-token state :keyword "elif")
-                  (let ((elif-test (parse-expression state)))
-                    (consume-token state :delimiter ":")
-                    (let ((elif-body (list (parse-statement state))))
-                      (setf orelse (list (make-py-if elif-test elif-body nil))))))
-                 
-                 ;; else: final body
-                 ((string= (token-value (peek-token state)) "else")
-                  (consume-token state :keyword "else")
-                  (consume-token state :delimiter ":")
-                  (setf orelse (list (parse-statement state)))
-                  (return)))) ; else ends the chain
-      
-      (make-py-if test body orelse))))
+      ;; Build elif/else chain recursively
+      (let ((current-if (make-py-if test body nil)))
+        (let ((chain-end current-if))
+          ;; Parse elif/else chain
+          (loop while (and (not (eq (token-type (peek-token state)) :eof))
+                           (not (eq (token-type (peek-token state)) :newline))
+                           (eq (token-type (peek-token state)) :keyword)
+                           (member (token-value (peek-token state)) '("elif" "else") :test #'string=))
+                do (cond
+                     ;; elif: create nested if statement
+                     ((string= (token-value (peek-token state)) "elif")
+                      (consume-token state :keyword "elif")
+                      (let ((elif-test (parse-expression state)))
+                        (consume-token state :delimiter ":")
+                        (let ((elif-body (list (parse-statement state))))
+                          (let ((elif-if (make-py-if elif-test elif-body nil)))
+                            (setf (py-orelse chain-end) (list elif-if))
+                            (setf chain-end elif-if)))))
+                     
+                     ;; else: final body
+                     ((string= (token-value (peek-token state)) "else")
+                      (consume-token state :keyword "else")
+                      (consume-token state :delimiter ":")
+                      (setf (py-orelse chain-end) (list (parse-statement state)))
+                      (return)))) ; else ends the chain
+          current-if)))))
 
 (defun parse-while-statement (state)
   "Parse while statement: while condition: body"
@@ -234,39 +204,6 @@
     ;; For now, parse single statement as body
     (let ((body (list (parse-statement state))))
       (make-py-while test body))))
-
-(defun parse-function-def (state)
-  "Parse function definition: def name(args): body"
-  (consume-token state :keyword "def")
-  (let ((name-token (consume-token state :identifier)))
-    (consume-token state :delimiter "(")
-    (let ((args (parse-argument-list state)))
-      (consume-token state :delimiter ")")
-      (consume-token state :delimiter ":")
-      ;; For now, parse single statement as body
-      (let ((body (list (parse-statement state))))
-        (make-py-function-def (intern (string-upcase (token-value name-token)) :python-cl) 
-                             args body))))))
-
-(defun parse-argument-list (state)
-  "Parse function argument list"
-  (let (args)
-    (unless (token-matches-p state :delimiter ")")
-      (loop
-        (let ((arg-token (consume-token state :identifier)))
-          (push (intern (string-upcase (token-value arg-token)) :python-cl) args))
-        (unless (token-matches-p state :delimiter ",")
-          (return))
-        (consume-token state :delimiter ",")))
-    (reverse args)))
-
-(defun parse-return-statement (state)
-  "Parse return statement: return [expression]"
-  (consume-token state :keyword "return")
-  (if (or (eq (token-type (peek-token state)) :eof)
-          (eq (token-type (peek-token state)) :newline))
-      (make-py-return nil)  ; return with no value
-      (make-py-return (parse-expression state))))
 
 (defun parse-assignment (state)
   "Parse assignment statement: target = value"
