@@ -255,17 +255,17 @@
       
       ;; Hex numbers
       ((and (> (length value) 2)
-            (string= (subseq value 0 2) "0x"))
+            (string-equal (subseq value 0 2) "0x"))
        (parse-integer (subseq value 2) :radix 16))
       
       ;; Octal numbers
       ((and (> (length value) 2)
-            (string= (subseq value 0 2) "0o"))
+            (string-equal (subseq value 0 2) "0o"))
        (parse-integer (subseq value 2) :radix 8))
       
       ;; Binary numbers
       ((and (> (length value) 2)
-            (string= (subseq value 0 2) "0b"))
+            (string-equal (subseq value 0 2) "0b"))
        (parse-integer (subseq value 2) :radix 2))
       
       ;; Float numbers

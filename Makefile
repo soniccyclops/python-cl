@@ -35,14 +35,18 @@ test: test-unit test-conformance
 # Run unit tests
 test-unit:
 	@echo "Running Python-CL unit tests..."
-	sbcl --eval "(ql:quickload :python-cl/tests)" \
+	sbcl --eval "(load \"~/quicklisp/setup.lisp\")" \
+	     --eval "(push #P\"$(shell pwd)/\" asdf:*central-registry*)" \
+	     --eval "(ql:quickload :python-cl/tests)" \
 	     --eval "(python-cl/tests:run-tests)" \
 	     --eval "(quit)"
 
 # Run conformance tests
 test-conformance:
 	@echo "Running Python Language Reference conformance tests..."
-	sbcl --eval "(ql:quickload :python-cl/tests)" \
+	sbcl --eval "(load \"~/quicklisp/setup.lisp\")" \
+	     --eval "(push #P\"$(shell pwd)/\" asdf:*central-registry*)" \
+	     --eval "(ql:quickload :python-cl/tests)" \
 	     --eval "(python-cl/tests:run-all-conformance-tests)" \
 	     --eval "(quit)"
 
@@ -53,7 +57,9 @@ test-section:
 		exit 1; \
 	fi
 	@echo "Running conformance tests for Section $(SECTION)..."
-	sbcl --eval "(ql:quickload :python-cl)" \
+	sbcl --eval "(load \"~/quicklisp/setup.lisp\")" \
+	     --eval "(push #P\"$(shell pwd)/\" asdf:*central-registry*)" \
+	     --eval "(ql:quickload :python-cl)" \
 	     --eval "(python-cl:test-section \"$(SECTION)\")" \
 	     --eval "(quit)"
 

@@ -12,40 +12,13 @@
   (unless *python-environment*
     (setf *python-environment* (make-py-env)))
   
-  ;; For now, implement basic numeric evaluation
-  ;; This is the MVP - handle simple numbers and arithmetic
-  (let ((tokens (tokenize source)))
-    (cond
-      ;; Single number
-      ((and (= (length tokens) 2) ; number + EOF
-            (eq (token-type (first tokens)) :number))
-       (token-value-as-number (first tokens)))
-      
-      ;; Simple binary operation: number op number
-      ((and (= (length tokens) 4) ; num op num EOF
-            (eq (token-type (first tokens)) :number)
-            (eq (token-type (second tokens)) :operator)
-            (eq (token-type (third tokens)) :number))
-       (let ((left (token-value-as-number (first tokens)))
-             (op (token-value (second tokens)))
-             (right (token-value-as-number (third tokens))))
-         (py-eval-binop left op right)))
-      
-      ;; For now, error on anything more complex
-      (t
-       (error "Complex expressions not yet implemented: ~A" source)))))
+  ;; Parse the source into AST and evaluate
+  (let ((ast (parse-python source)))
+    (if ast
+        (python-to-lisp (py-eval-ast ast *python-environment*))
+        (error "Failed to parse: ~A" source))))
 
-(defun py-eval-binop (left op right)
-  "Evaluate a binary operation"
-  (case (intern (string-upcase op) :keyword)
-    (:+ (+ left right))
-    (:- (- left right))
-    (:* (* left right))
-    (:/ (/ left right))
-    (:/\/ (floor left right))  ; Integer division
-    (:% (mod left right))
-    (:** (expt left right))
-    (t (error "Unsupported operator: ~A" op))))
+
 
 (defun py-exec (source)
   "Execute Python statements (no return value)"

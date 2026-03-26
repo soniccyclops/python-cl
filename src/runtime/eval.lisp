@@ -9,10 +9,10 @@
 
 ;; Literals
 (defmethod py-eval-ast ((node py-num) env)
-  (py-value node))
+  (lisp-to-python (py-value node)))
 
 (defmethod py-eval-ast ((node py-str) env)
-  (py-value node))
+  (make-py-str (py-value node)))
 
 ;; Names (variable lookup)
 (defmethod py-eval-ast ((node py-name) env)
