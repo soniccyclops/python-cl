@@ -173,7 +173,7 @@
              (py-name func) (length func-args) (length args)))
     
     ;; Create new environment for function scope
-    (let ((func-env (make-py-env :parent env)))
+    (let ((func-env (make-py-env :enclosing env)))
       ;; Bind arguments to parameters
       (loop for arg in args
             for param in func-args

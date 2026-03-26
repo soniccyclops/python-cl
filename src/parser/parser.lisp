@@ -98,10 +98,20 @@
        (advance-token state)
        (make-py-bool (string= (token-value token) "True")))
       
-      ;; Identifiers
+      ;; Identifiers (and function calls)
       ((eq (token-type token) :identifier)
-       (advance-token state)
-       (make-py-name (token-value token)))
+       (let ((name (token-value token)))
+         (advance-token state)
+         ;; Check for function call
+         (if (token-matches-p state :delimiter "(")
+             ;; Function call
+             (progn
+               (consume-token state :delimiter "(")
+               (let ((args (parse-call-arguments state)))
+                 (consume-token state :delimiter ")")
+                 (make-py-call (make-py-name name) args)))
+             ;; Just an identifier
+             (make-py-name name))))
       
       ;; Parenthesized expressions
       ((token-matches-p state :delimiter "(")
@@ -133,6 +143,11 @@
   "Parse a Python statement"
   (let ((first-token (peek-token state)))
     (cond
+      ;; Function definition
+      ((and (eq (token-type first-token) :keyword)
+            (string= (token-value first-token) "def"))
+       (parse-function-def state))
+      
       ;; If statement
       ((and (eq (token-type first-token) :keyword)
             (string= (token-value first-token) "if"))
@@ -155,6 +170,11 @@
        (consume-token state :keyword "continue")
        (make-py-continue))
        
+      ;; Return statement
+      ((and (eq (token-type first-token) :keyword)
+            (string= (token-value first-token) "return"))
+       (parse-return-statement state))
+       
       ;; Check for assignment: identifier = expression or augmented assignment  
       ((and (eq (token-type first-token) :identifier)
             (< (1+ (parse-state-position state)) (length (parse-state-tokens state)))
@@ -168,6 +188,55 @@
       (t 
        (let ((expr (parse-expression state)))
          (make-py-expr-stmt expr))))))
+
+(defun parse-call-arguments (state)
+  "Parse function call argument list"
+  (let ((args nil))
+    (unless (token-matches-p state :delimiter ")")
+      (loop
+        (push (parse-expression state) args)
+        (unless (token-matches-p state :delimiter ",")
+          (return))
+        (consume-token state :delimiter ",")))
+    (reverse args)))
+
+(defun parse-function-def (state)
+  "Parse function definition: def name(args): body"
+  (consume-token state :keyword "def")
+  (let ((name (token-value (consume-token state :identifier))))
+    (consume-token state :delimiter "(")
+    (let ((args (parse-argument-list state)))
+      (consume-token state :delimiter ")")
+      (consume-token state :delimiter ":")
+      (let ((body (parse-function-body state)))
+        (make-py-function-def name args body)))))
+
+(defun parse-argument-list (state)
+  "Parse function argument list"
+  (let ((args nil))
+    (unless (token-matches-p state :delimiter ")")
+      (loop
+        (push (token-value (consume-token state :identifier)) args)
+        (unless (token-matches-p state :delimiter ",")
+          (return))
+        (consume-token state :delimiter ",")))
+    (reverse args)))
+
+(defun parse-function-body (state)
+  "Parse function body (for now, just a single statement)"
+  ;; For now, parse single statement as body
+  ;; In a full implementation, this would handle indented blocks
+  (list (parse-statement state)))
+
+(defun parse-return-statement (state)
+  "Parse return statement: return [expression]"
+  (consume-token state :keyword "return")
+  (if (or (eq (token-type (peek-token state)) :eof)
+          (eq (token-type (peek-token state)) :newline))
+      ;; Return with no value
+      (make-py-return nil)
+      ;; Return with value
+      (make-py-return (parse-expression state))))
 
 (defun parse-if-statement (state)
   "Parse if statement with elif/else: if condition: body [elif condition: body]* [else: body]"

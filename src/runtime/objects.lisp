@@ -195,6 +195,7 @@
     (py-bool (py-value py-object))
     (py-none nil)  ; None converts to Lisp NIL
     (py-str (py-value py-object))
+    (py-function py-object) ; Functions convert to themselves for now
     (py-list (mapcar #'python-to-lisp (py-elements py-object)))
     (py-dict 
      (let (result)
