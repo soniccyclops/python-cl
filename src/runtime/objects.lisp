@@ -77,6 +77,36 @@
 (defun make-py-complex (value)
   (make-instance 'py-complex :value value))
 
+;;; Type Predicates
+
+(defun py-object-p (obj)
+  "Check if object is a Python object"
+  (typep obj 'py-object))
+
+(defun py-int-p (obj)
+  "Check if object is a Python int"
+  (typep obj 'py-int))
+
+(defun py-float-p (obj)
+  "Check if object is a Python float"
+  (typep obj 'py-float))
+
+(defun py-complex-p (obj)
+  "Check if object is a Python complex"
+  (typep obj 'py-complex))
+
+(defun py-str-p (obj)
+  "Check if object is a Python str"
+  (typep obj 'py-str))
+
+(defun py-list-p (obj)
+  "Check if object is a Python list"
+  (typep obj 'py-list))
+
+(defun py-dict-p (obj)
+  "Check if object is a Python dict"
+  (typep obj 'py-dict))
+
 (defun make-py-str (value)
   (make-instance 'py-str :value (string value)))
 

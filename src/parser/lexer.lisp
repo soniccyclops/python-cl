@@ -66,7 +66,7 @@
     (loop while (and (< pos len)
                      (or (digit-char-p* (char source pos) radix)
                          (and (= radix 10) (char= (char source pos) #\.))
-                         (and (= radix 10) (member (char-downcase (char source pos)) '(#\e #\+) :test #'char=))))
+                         (and (= radix 10) (member (char-downcase (char source pos)) '(#\e) :test #'char=))))
           do (case (char-downcase (char source pos))
                (#\. (if has-dot 
                         (return)
@@ -251,7 +251,22 @@
       ((and (> (length value) 0)
             (member (char (string-downcase value) (1- (length value))) '(#\j) :test #'char=))
        (let ((real-part (subseq value 0 (1- (length value)))))
-         (complex 0 (parse-number real-part))))
+         (cond
+           ;; Pure imaginary (e.g., "4j")
+           ((= (length real-part) 0)
+            (complex 0 1))
+           ;; Check for complex number format (e.g., "3+4" from "3+4j")
+           ((find #\+ real-part :start 1)  ; Skip first char in case of negative
+            (let ((plus-pos (position #\+ real-part :start 1)))
+              (complex (read-from-string (subseq real-part 0 plus-pos))
+                       (read-from-string (subseq real-part (1+ plus-pos))))))
+           ((find #\- real-part :start 1)  ; Handle subtraction (3-4j)
+            (let ((minus-pos (position #\- real-part :start 1)))
+              (complex (read-from-string (subseq real-part 0 minus-pos))
+                       (- (read-from-string (subseq real-part (1+ minus-pos)))))))
+           ;; Simple imaginary (e.g., "4j")
+           (t
+            (complex 0 (read-from-string real-part))))))
       
       ;; Hex numbers
       ((and (> (length value) 2)
