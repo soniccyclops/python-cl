@@ -146,6 +146,13 @@
   (make-instance 'py-name :id (if (symbolp id) id (intern (string-upcase id)))
                  :source-location source-location))
 
+(defun make-py-unaryop (op operand &key source-location)
+  "Create a unary operation AST node"
+  (make-instance 'py-unaryop 
+                 :op op 
+                 :operand operand
+                 :source-location source-location))
+
 (defun make-py-binop (left op right &key source-location)
   "Create a binary operation AST node"
   (make-instance 'py-binop 

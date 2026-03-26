@@ -242,6 +242,39 @@
     (t (error "TypeError: unsupported operand type(s) for **: '~A' and '~A'"
               (py-type left) (py-type right)))))
 
+;;; Unary Operations
+
+(defun py-neg (operand)
+  "Python unary minus (-) operation"
+  (cond
+    ((or (py-int-p operand) (py-float-p operand) (py-complex-p operand))
+     (lisp-to-python (- (py-value operand))))
+    
+    (t (error "TypeError: bad operand type for unary -: '~A'"
+              (py-type operand)))))
+
+(defun py-pos (operand)
+  "Python unary plus (+) operation"
+  (cond
+    ((or (py-int-p operand) (py-float-p operand) (py-complex-p operand))
+     operand)  ; No change for positive numbers
+    
+    (t (error "TypeError: bad operand type for unary +: '~A'"
+              (py-type operand)))))
+
+(defun py-invert (operand)
+  "Python bitwise NOT (~) operation"
+  (cond
+    ((py-int-p operand)
+     (lisp-to-python (lognot (py-value operand))))
+    
+    (t (error "TypeError: bad operand type for unary ~: '~A'"
+              (py-type operand)))))
+
+(defun py-not (operand)
+  "Python logical NOT operation"
+  (lisp-to-python (if (py-truthy-p operand) nil t)))
+
 ;;; Comparison Operations
 
 (defun py-eq (left right)

@@ -33,6 +33,17 @@
       (** (py-power left right))
       (t (error "Unsupported binary operator: ~A" op)))))
 
+;; Unary operations
+(defmethod py-eval-ast ((node py-unaryop) env)
+  (let ((operand (py-eval-ast (py-operand node) env))
+        (op (py-op node)))
+    (case op
+      (+ operand)  ; Unary plus (no-op for numbers)
+      (- (py-neg operand))  ; Unary minus
+      (~ (py-invert operand))  ; Bitwise NOT
+      (NOT (py-not operand))   ; Logical NOT
+      (t (error "Unsupported unary operator: ~A" op)))))
+
 ;; Statements
 (defmethod py-eval-ast ((node py-assign) env)
   (let ((value (py-eval-ast (py-value node) env)))

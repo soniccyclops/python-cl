@@ -45,7 +45,7 @@
 
 (defun parse-binary-op (state min-precedence)
   "Parse binary operations with precedence climbing"
-  (let ((left (parse-primary state)))
+  (let ((left (parse-unary state)))
     (loop while (and (peek-token state)
                      (eq (token-type (peek-token state)) :operator)
                      (>= (operator-precedence (token-value (peek-token state))) min-precedence))
@@ -55,6 +55,19 @@
                     (right (parse-binary-op state (1+ precedence))))
                (setf left (make-py-binop left op right))))
     left))
+
+(defun parse-unary (state)
+  "Parse unary operations"
+  (let ((token (peek-token state)))
+    (if (and (eq (token-type token) :operator)
+             (member (token-value token) '("+" "-" "~" "not") :test #'string=))
+        ;; Unary operator
+        (let* ((op-token (consume-token state :operator))
+               (op (intern (string-upcase (token-value op-token))))
+               (operand (parse-unary state)))  ; Right-associative
+          (make-py-unaryop op operand))
+        ;; Not a unary operator, parse primary
+        (parse-primary state))))
 
 (defun parse-primary (state)
   "Parse primary expressions (literals, names, parentheses)"
