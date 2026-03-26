@@ -80,6 +80,22 @@
       (py-bind (py-id target) value env))
     value))
 
+(defmethod py-eval-ast ((node py-if) env)
+  (let ((test-result (py-eval-ast (py-test node) env)))
+    (if (py-truthy-p test-result)
+        ;; Execute body statements
+        (let (last-result)
+          (dolist (stmt (py-body node))
+            (setf last-result (py-eval-ast stmt env)))
+          (or last-result (make-py-none)))  ; Return None if no statements
+        ;; Execute else clause if it exists
+        (if (py-orelse node)
+            (let (last-result)
+              (dolist (stmt (py-orelse node))
+                (setf last-result (py-eval-ast stmt env)))
+              (or last-result (make-py-none)))
+            (make-py-none)))))  ; Return None if condition is false and no else
+
 (defmethod py-eval-ast ((node py-expr-stmt) env)
   (py-eval-ast (py-value node) env))
 

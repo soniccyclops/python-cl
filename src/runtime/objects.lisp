@@ -38,6 +38,10 @@
           :initform nil))
   (:default-initargs :type-name 'bool))
 
+(defclass py-none (py-object)
+  ()
+  (:default-initargs :type-name 'none))
+
 (defclass py-str (py-object)
   ((value :initarg :value
           :accessor py-value
@@ -87,6 +91,9 @@
 (defun make-py-bool (value)
   (make-instance 'py-bool :value (if value t nil)))
 
+(defun make-py-none ()
+  (make-instance 'py-none))
+
 ;;; Type Predicates
 
 (defun py-object-p (obj)
@@ -109,6 +116,10 @@
   "Check if object is a Python bool"
   (typep obj 'py-bool))
 
+(defun py-none-p (obj)
+  "Check if object is a Python None"
+  (typep obj 'py-none))
+
 (defun py-str-p (obj)
   "Check if object is a Python str"
   (typep obj 'py-str))
@@ -128,6 +139,7 @@
     ((py-float-p obj) "float")
     ((py-complex-p obj) "complex")
     ((py-bool-p obj) "bool")
+    ((py-none-p obj) "NoneType")
     ((py-str-p obj) "str")
     ((py-list-p obj) "list")
     ((py-dict-p obj) "dict")
@@ -175,6 +187,7 @@
     (py-float (py-value py-object))
     (py-complex (py-value py-object))
     (py-bool (py-value py-object))
+    (py-none nil)  ; None converts to Lisp NIL
     (py-str (py-value py-object))
     (py-list (mapcar #'python-to-lisp (py-elements py-object)))
     (py-dict 
@@ -193,6 +206,7 @@
     (py-float (not (zerop (py-value obj))))
     (py-complex (not (zerop (py-value obj))))
     (py-bool (py-value obj))
+    (py-none nil)  ; None is falsy
     (py-str (not (string= (py-value obj) "")))
     (py-list (not (null (py-elements obj))))
     (py-dict (not (zerop (hash-table-count (py-table obj)))))
@@ -217,6 +231,9 @@
 
 (defmethod print-object ((obj py-bool) stream)
   (format stream "~A" (if (py-value obj) "True" "False")))
+
+(defmethod print-object ((obj py-none) stream)
+  (format stream "None"))
 
 (defmethod print-object ((obj py-str) stream)
   (format stream "'~A'" (py-value obj)))

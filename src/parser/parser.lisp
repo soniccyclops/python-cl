@@ -126,6 +126,11 @@
   "Parse a Python statement"
   (let ((first-token (peek-token state)))
     (cond
+      ;; If statement
+      ((and (eq (token-type first-token) :keyword)
+            (string= (token-value first-token) "if"))
+       (parse-if-statement state))
+      
       ;; Check for assignment: identifier = expression
       ((and (eq (token-type first-token) :identifier)
             (< (1+ (parse-state-position state)) (length (parse-state-tokens state)))
@@ -139,6 +144,16 @@
       (t 
        (let ((expr (parse-expression state)))
          (make-py-expr-stmt expr))))))
+
+(defun parse-if-statement (state)
+  "Parse if statement: if condition: body"
+  (consume-token state :keyword "if")
+  (let ((test (parse-expression state)))
+    (consume-token state :delimiter ":")
+    ;; For now, parse single statement as body  
+    ;; TODO: Handle multi-statement bodies with proper indentation
+    (let ((body (list (parse-statement state))))
+      (make-py-if test body nil))))  ; No else clause for now
 
 (defun parse-assignment (state)
   "Parse assignment statement: target = value"

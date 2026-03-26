@@ -172,6 +172,14 @@
                  :value value
                  :source-location source-location))
 
+(defun make-py-if (test body orelse &key source-location)
+  "Create an if statement AST node"
+  (make-instance 'py-if
+                 :test test
+                 :body body
+                 :orelse orelse
+                 :source-location source-location))
+
 (defun make-py-expr-stmt (value &key source-location)
   "Create an expression statement AST node"
   (make-instance 'py-expr-stmt 
