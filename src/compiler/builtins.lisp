@@ -289,6 +289,54 @@
   "Python logical NOT operation"
   (lisp-to-python (if (py-truthy-p operand) nil t)))
 
+;;; Bitwise Operations
+
+(defun py-bitwise-and (left right)
+  "Python bitwise AND (&) operation"
+  (cond
+    ((and (py-int-p left) (py-int-p right))
+     (lisp-to-python (logand (py-value left) (py-value right))))
+    (t (error "TypeError: unsupported operand type(s) for &: '~A' and '~A'"
+              (py-type left) (py-type right)))))
+
+(defun py-bitwise-or (left right)
+  "Python bitwise OR (|) operation"
+  (cond
+    ((and (py-int-p left) (py-int-p right))
+     (lisp-to-python (logior (py-value left) (py-value right))))
+    (t (error "TypeError: unsupported operand type(s) for |: '~A' and '~A'"
+              (py-type left) (py-type right)))))
+
+(defun py-bitwise-xor (left right)
+  "Python bitwise XOR (^) operation"
+  (cond
+    ((and (py-int-p left) (py-int-p right))
+     (lisp-to-python (logxor (py-value left) (py-value right))))
+    (t (error "TypeError: unsupported operand type(s) for ^: '~A' and '~A'"
+              (py-type left) (py-type right)))))
+
+(defun py-left-shift (left right)
+  "Python left shift (<<) operation"
+  (cond
+    ((and (py-int-p left) (py-int-p right))
+     (let ((shift-amount (py-value right)))
+       (when (< shift-amount 0)
+         (error "ValueError: negative shift count"))
+       (lisp-to-python (ash (py-value left) shift-amount))))
+    (t (error "TypeError: unsupported operand type(s) for <<: '~A' and '~A'"
+              (py-type left) (py-type right)))))
+
+(defun py-right-shift (left right)
+  "Python right shift (>>) operation"
+  (cond
+    ((and (py-int-p left) (py-int-p right))
+     (let ((shift-amount (py-value right)))
+       (when (< shift-amount 0)
+         (error "ValueError: negative shift count"))
+       (lisp-to-python (ash (py-value left) (- shift-amount)))))
+    (t (error "TypeError: unsupported operand type(s) for >>: '~A' and '~A'"
+              (py-type left) (py-type right)))))
+
 ;;; Comparison Operations
 
 (defun py-lt (left right)

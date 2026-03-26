@@ -116,10 +116,13 @@
   "Return precedence for Python operators (higher = tighter binding)"
   (case (intern (string-upcase op-string) :keyword)
     (:** 14)     ; Exponentiation (right associative)
-    ((:+ :-) 13) ; Unary plus/minus
     ((:* :/ :/\/ :%) 12) ; Multiplication, division, modulo
     ((:+ :-) 11) ; Addition, subtraction
-    ((:< :<= :> :>= :!= :==) 8) ; Comparisons
+    ((:<< :>>) 10) ; Bit shifts
+    (:& 9)       ; Bitwise AND
+    (:^ 8)       ; Bitwise XOR  
+    (:\| 7)      ; Bitwise OR
+    ((:< :<= :> :>= :!= :==) 6) ; Comparisons
     (:AND 5)     ; Boolean AND
     (:OR 4)      ; Boolean OR
     (t 0)))      ; Unknown operators

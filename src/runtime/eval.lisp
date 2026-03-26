@@ -60,6 +60,13 @@
            (== (py-eq left right))
            (!= (py-ne left right))
            
+           ;; Bitwise operators
+           (& (py-bitwise-and left right))
+           (\| (py-bitwise-or left right))
+           (^ (py-bitwise-xor left right))
+           (<< (py-left-shift left right))
+           (>> (py-right-shift left right))
+           
            (t (error "Unsupported binary operator: ~A" op))))))))
 
 ;; Unary operations
