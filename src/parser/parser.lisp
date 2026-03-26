@@ -131,6 +131,11 @@
             (string= (token-value first-token) "if"))
        (parse-if-statement state))
       
+      ;; While statement  
+      ((and (eq (token-type first-token) :keyword)
+            (string= (token-value first-token) "while"))
+       (parse-while-statement state))
+      
       ;; Check for assignment: identifier = expression
       ((and (eq (token-type first-token) :identifier)
             (< (1+ (parse-state-position state)) (length (parse-state-tokens state)))
@@ -154,6 +159,15 @@
     ;; TODO: Handle multi-statement bodies with proper indentation
     (let ((body (list (parse-statement state))))
       (make-py-if test body nil))))  ; No else clause for now
+
+(defun parse-while-statement (state)
+  "Parse while statement: while condition: body"
+  (consume-token state :keyword "while")
+  (let ((test (parse-expression state)))
+    (consume-token state :delimiter ":")
+    ;; For now, parse single statement as body
+    (let ((body (list (parse-statement state))))
+      (make-py-while test body))))
 
 (defun parse-assignment (state)
   "Parse assignment statement: target = value"

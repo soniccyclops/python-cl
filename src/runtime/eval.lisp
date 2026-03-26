@@ -96,6 +96,13 @@
               (or last-result (make-py-none)))
             (make-py-none)))))  ; Return None if condition is false and no else
 
+(defmethod py-eval-ast ((node py-while) env)
+  (let (last-result)
+    (loop while (py-truthy-p (py-eval-ast (py-test node) env))
+          do (dolist (stmt (py-body node))
+               (setf last-result (py-eval-ast stmt env))))
+    (or last-result (make-py-none))))  ; Return None if loop never executed
+
 (defmethod py-eval-ast ((node py-expr-stmt) env)
   (py-eval-ast (py-value node) env))
 

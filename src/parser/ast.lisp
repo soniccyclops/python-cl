@@ -131,6 +131,16 @@
            :initform nil
            :documentation "Else clause statements")))
 
+(defclass py-while (py-stmt)
+  ((test :initarg :test
+         :accessor py-test
+         :type py-expr
+         :documentation "Loop condition expression")
+   (body :initarg :body
+         :accessor py-body
+         :type list
+         :documentation "Statements to execute in loop")))
+
 ;;; AST Construction Utilities
 
 (defun make-py-num (value &key source-location)
@@ -178,6 +188,13 @@
                  :test test
                  :body body
                  :orelse orelse
+                 :source-location source-location))
+
+(defun make-py-while (test body &key source-location)
+  "Create a while statement AST node"
+  (make-instance 'py-while
+                 :test test
+                 :body body
                  :source-location source-location))
 
 (defun make-py-expr-stmt (value &key source-location)
