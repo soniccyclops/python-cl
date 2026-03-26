@@ -197,15 +197,27 @@
                       (setf pos new-pos)
                       (incf column (- new-pos pos))))
                    
-                   ;; Identifiers and keywords
+                   ;; Identifiers and keywords (check for string prefixes first)
                    ((identifier-start-p char)
                     (multiple-value-bind (new-pos token-value)
                         (scan-identifier source pos)
-                      (if (member token-value *python-keywords* :test #'string=)
-                          (add-token :keyword token-value)
-                          (add-token :identifier token-value))
-                      (setf pos new-pos)
-                      (incf column (- new-pos pos))))
+                      ;; Check if this is a string prefix (r, u, b, f followed by quote)
+                      (if (and (< new-pos len)
+                               (member (string-downcase token-value) '("r" "u" "b" "f" "rf" "fr" "rb" "br") :test #'string=)
+                               (member (char source new-pos) '(#\' #\") :test #'char=))
+                          ;; This is a string prefix - scan the string
+                          (multiple-value-bind (string-end string-content)
+                              (scan-string source new-pos)
+                            (add-token :string (concatenate 'string token-value string-content))
+                            (setf pos string-end)
+                            (incf column (- string-end pos)))
+                          ;; Regular identifier or keyword
+                          (progn
+                            (if (member token-value *python-keywords* :test #'string=)
+                                (add-token :keyword token-value)
+                                (add-token :identifier token-value))
+                            (setf pos new-pos)
+                            (incf column (- new-pos pos))))))
                    
                    ;; Operators and delimiters
                    (t
