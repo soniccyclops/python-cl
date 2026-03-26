@@ -80,6 +80,25 @@
       (py-bind (py-id target) value env))
     value))
 
+(defmethod py-eval-ast ((node py-aug-assign) env)
+  (let ((target-name (py-id (py-target node)))
+        (new-value (py-eval-ast (py-value node) env)))
+    ;; Get current value
+    (let ((current-value (py-lookup target-name env)))
+      ;; Apply the operation
+      (let ((result (case (py-op node)
+                      (:+ (py-add current-value new-value))
+                      (:- (py-sub current-value new-value))
+                      (:* (py-mul current-value new-value))
+                      (:/ (py-div current-value new-value))
+                      (:/\/ (py-floordiv current-value new-value))
+                      (:% (py-mod current-value new-value))
+                      (:** (py-pow current-value new-value))
+                      (t (error "Unknown augmented assignment operator: ~A" (py-op node))))))
+        ;; Bind the result
+        (py-bind target-name result env)
+        result))))
+
 (defmethod py-eval-ast ((node py-if) env)
   (let ((test-result (py-eval-ast (py-test node) env)))
     (if (py-truthy-p test-result)

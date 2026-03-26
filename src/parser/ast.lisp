@@ -100,6 +100,20 @@
           :type py-expr
           :documentation "Value to assign")))
 
+(defclass py-aug-assign (py-stmt)
+  ((target :initarg :target
+           :accessor py-target
+           :type py-expr
+           :documentation "Assignment target")
+   (op :initarg :op
+       :accessor py-op
+       :type symbol
+       :documentation "Augmented assignment operator")
+   (value :initarg :value
+          :accessor py-value
+          :type py-expr
+          :documentation "Value to assign")))
+
 (defclass py-expr-stmt (py-stmt)
   ((value :initarg :value
           :accessor py-value
@@ -197,6 +211,14 @@
   "Create an assignment statement AST node"
   (make-instance 'py-assign 
                  :targets (ensure-list targets)
+                 :value value
+                 :source-location source-location))
+
+(defun make-py-aug-assign (target op value &key source-location)
+  "Create an augmented assignment statement AST node"
+  (make-instance 'py-aug-assign
+                 :target target
+                 :op op
                  :value value
                  :source-location source-location))
 

@@ -148,13 +148,13 @@
        (consume-token state :keyword "continue")
        (make-py-continue))
        
-      ;; Check for assignment: identifier = expression
+      ;; Check for assignment: identifier = expression or augmented assignment  
       ((and (eq (token-type first-token) :identifier)
             (< (1+ (parse-state-position state)) (length (parse-state-tokens state)))
             (let ((next-token (nth (1+ (parse-state-position state)) (parse-state-tokens state))))
               (and next-token 
                    (eq (token-type next-token) :operator)
-                   (string= (token-value next-token) "="))))
+                   (member (token-value next-token) '("=" "+=" "-=" "*=" "/=" "//=" "%=" "**=") :test #'string=))))
        (parse-assignment state))
       
       ;; Otherwise, parse as expression statement
@@ -206,11 +206,41 @@
       (make-py-while test body))))
 
 (defun parse-assignment (state)
-  "Parse assignment statement: target = value"
-  (let ((target (consume-token state :identifier)))
-    (consume-token state :operator "=")
-    (let ((value (parse-expression state)))
-      (make-py-assign (list (make-py-name (token-value target))) value))))
+  "Parse assignment statement: target = value, multiple targets, or augmented assignment"
+  (let ((first-target (make-py-name (token-value (consume-token state :identifier))))
+        (targets nil))
+    
+    ;; Handle multiple assignment: a = b = value  
+    (push first-target targets)
+    (loop while (and (eq (token-type (peek-token state)) :operator)
+                     (string= (token-value (peek-token state)) "=")
+                     (< (1+ (parse-state-position state)) (length (parse-state-tokens state)))
+                     (eq (token-type (nth (1+ (parse-state-position state)) (parse-state-tokens state))) :identifier))
+          do (consume-token state :operator "=")
+             (push (make-py-name (token-value (consume-token state :identifier))) targets))
+    
+    (let ((op-token (peek-token state)))
+      (cond
+        ;; Regular assignment: target = value
+        ((and (eq (token-type op-token) :operator)
+              (string= (token-value op-token) "="))
+         (consume-token state :operator "=")
+         (let ((value (parse-expression state)))
+           (make-py-assign (reverse targets) value)))
+        
+        ;; Augmented assignment: target += value
+        ((and (eq (token-type op-token) :operator)
+              (member (token-value op-token) '("+=" "-=" "*=" "/=" "//=" "%=" "**=") :test #'string=))
+         (when (> (length targets) 1)
+           (error "Cannot use multiple targets with augmented assignment"))
+         (let ((aug-op (consume-token state :operator)))
+           (let ((value (parse-expression state)))
+             (make-py-aug-assign first-target 
+                                (intern (string-upcase (subseq (token-value aug-op) 0 
+                                                              (1- (length (token-value aug-op))))) :keyword)
+                                value))))
+        
+        (t (error "Expected assignment operator, got ~A" op-token))))))
 
 ;;; Top-level Parser Interface
 
