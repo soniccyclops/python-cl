@@ -64,10 +64,14 @@
 (defun parse-unary (state)
   "Parse unary operations"
   (let ((token (peek-token state)))
-    (if (and (eq (token-type token) :operator)
-             (member (token-value token) '("+" "-" "~" "not") :test #'string=))
+    (if (or (and (eq (token-type token) :operator)
+                 (member (token-value token) '("+" "-" "~") :test #'string=))
+            (and (eq (token-type token) :keyword)
+                 (string= (token-value token) "not")))
         ;; Unary operator
-        (let* ((op-token (consume-token state :operator))
+        (let* ((op-token (if (eq (token-type token) :operator)
+                             (consume-token state :operator)
+                             (consume-token state :keyword)))
                (op (intern (string-upcase (token-value op-token)) :python-cl))
                (operand (parse-unary state)))  ; Right-associative
           (make-py-unaryop op operand))
